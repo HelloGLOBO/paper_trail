@@ -23,6 +23,7 @@ module PaperTrail
 
     # :nodoc:
     module ClassMethods
+
       def item_subtype_column_present?
         column_names.include?("item_subtype")
       end
@@ -45,6 +46,14 @@ module PaperTrail
 
       def not_creates
         where "event <> ?", "create"
+      end
+
+      def with_object_values
+        where "object <> ?", nil
+      end
+
+      def with_object_change_values
+        where "object_changes <> ?", nil
       end
 
       def between(start_time, end_time)
@@ -309,6 +318,37 @@ module PaperTrail
       @index ||= RecordHistory.new(sibling_versions, self.class).index(self)
     end
 
+    # @api public
+    def full?
+      (self.object ? true : false)
+    end
+
+    # @api public
+    def incremental?
+      (self.object_changes ? true : false)
+    end
+
+    # DEBUG #
+    def print_config
+      puts "Version Limit: #{version_limit} -  Changes Limit: #{version_changes_limit}"
+      puts "NIL? Version Limit: #{version_limit.nil?} -  Changes Limit: #{version_changes_limit.nil?}"
+    end
+
+    # @api public
+    def cleanse_object
+      update_attributes(object: nil)
+    end
+
+    # @api public
+    def cleanse_object_changes
+      update_attributes(object_changes: nil)
+    end
+
+    # DEBUG #
+    def print_info
+      puts "#{id}  -----   #{incremental?}  -----   #{full?}"
+    end
+
     private
 
     # @api private
@@ -362,12 +402,45 @@ module PaperTrail
     # @api private
     def enforce_version_limit!
       limit = version_limit
-      return unless limit.is_a? Numeric
+      changes_limit = version_changes_limit
+
+      return unless limit.is_a?(Numeric) || changes_limit.is_a?(Numeric)
+
       previous_versions = sibling_versions.not_creates.
         order(self.class.timestamp_sort_order("asc"))
-      return unless previous_versions.size > limit
-      excess_versions = previous_versions - previous_versions.last(limit)
-      excess_versions.map(&:destroy)
+
+      # DEBUG #
+      # previous_versions_with_objects = sibling_versions.not_creates.with_object_values.
+      #   order(self.class.timestamp_sort_order("asc"))
+      #
+      # previous_versions_with_changes = sibling_versions.not_creates.with_object_change_values.
+      #   order(self.class.timestamp_sort_order("asc"))
+      #
+      # puts "previous_versions.count = #{previous_versions.count}"
+      # puts "previous_versions_with_objects.count = #{previous_versions_with_objects.count}"
+      # puts "previous_versions_with_changes.count = #{previous_versions_with_changes.count}"
+      # DEBUG #
+
+      return unless previous_versions.size > (limit || 0) && previous_versions.size > (changes_limit || 0)
+
+      excess_versions = previous_versions - (limit.nil? ? previous_versions : previous_versions.last(limit))
+      excess_changes_versions = (changes_limit.nil? ? previous_versions : previous_versions - previous_versions.last(changes_limit))
+
+      # DEBUG #
+      # puts "excess_versions.count = #{excess_versions.count} - excess_versions.ids = #{excess_versions.map(&:id)}"
+      # puts "excess_changes_versions.count = #{excess_changes_versions.count} - excess_changes_versions.ids = #{excess_changes_versions.map(&:id)}"
+      # DEBUG #
+
+      if excess_versions.size > excess_changes_versions.size
+        excess_versions.each(&:cleanse_object_changes)
+        (excess_versions & excess_changes_versions).map(&:destroy)
+      elsif excess_versions.size < excess_changes_versions.size
+        excess_changes_versions.each(&:cleanse_object)
+        (excess_changes_versions & excess_versions).map(&:destroy)
+      elsif excess_versions.size == excess_changes_versions.size
+        excess_versions.map(&:destroy)
+      end
+
     end
 
     # @api private
@@ -389,6 +462,16 @@ module PaperTrail
         end
       end
       PaperTrail.config.version_limit
+    end
+
+    def version_changes_limit
+      if self.class.item_subtype_column_present?
+        klass = (item_subtype || item_type).constantize
+        if klass&.paper_trail_options&.key?(:changes_limit)
+          return klass.paper_trail_options[:changes_limit]
+        end
+      end
+      PaperTrail.config.version_changes_limit
     end
   end
 end
