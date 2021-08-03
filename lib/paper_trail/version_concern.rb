@@ -400,7 +400,7 @@ module PaperTrail
       end
 
       enforce_version_limit! limit, previous_versions if has_limit
-      enforce_version_changes_limit! limit, changes_limit, previous_versions if has_changes_limit
+      enforce_version_changes_limit! changes_limit, previous_versions if has_changes_limit
     end
 
     # Enforces the `version_limit`, if set. Default: no limit.
@@ -416,20 +416,12 @@ module PaperTrail
 
     # Enforces the `version_changes_limit`, if set. Default: no limit.
     # @api private
-    def enforce_version_changes_limit!(limit, changes_limit, previous_versions)
-      has_limit = limit.is_a? Numeric
-
+    def enforce_version_changes_limit!(changes_limit, previous_versions)
       return unless changes_limit.is_a? Numeric
       return unless previous_versions.size > changes_limit
 
       excess_changes_versions = previous_versions - previous_versions.last(changes_limit)
-      excess_versions = previous_versions - previous_versions.last(limit) if has_limit
-
-      if has_limit && excess_versions.size > excess_changes_versions.size
-        excess_versions.map(&:cleanse_object_changes)
-      else # if excess_versions.size < excess_changes_versions.size
-        excess_changes_versions.map(&:cleanse_object)
-      end
+      excess_changes_versions.map(&:cleanse_object)
     end
 
     # @api private
@@ -445,6 +437,10 @@ module PaperTrail
       fetch_config_option :version_limit, :limit
     end
 
+    # See docs section 2.e. Limiting the Number of +object+ on Versions Created.
+    # The version changes limit can be global or per-model.
+    #
+    # @api private
     def version_changes_limit
       fetch_config_option :version_changes_limit, :changes_limit
     end

@@ -9,38 +9,91 @@ module PaperTrail
       PaperTrail.config.version_changes_limit = nil
     end
 
-    it "cleans up objects with limit specified in model" do
+    it "cleans up old version objects when version_changes_limit is set on the model" do
       PaperTrail.config.version_limit = nil
-      PaperTrail.config.version_changes_limit = 10
 
-      # LimitedBicycle overrides the global version_changes_limit
+      # LimitedBicycle overrides the global version_limit
       bike = LimitedChangesBicycle.create(name: "Bike") # has_paper_trail changes_limit: 3
 
       15.times do |i|
         bike.update(name: "Name #{i}")
       end
+      # 16 versions = 15 updates + 1 create.
 
       expect(LimitedChangesBicycle.find(bike.id).versions.where(object: nil).count).to eq(13)
-      # 16 versions = 15 updates + 1 create.
-      # we are expecting only {changes_limit} of them have object set
+      # 13 versions = 12 updates + 1 create
     end
 
-    # TODO: not sure about this one, if the excess_versions is higher than
-    # the excess_changes_versions then anything inside the
-    # excess_changes_versions will already be destroyed by the default mechanism.
-    it "cleans up object_changes, when there are older and more records found with version_limit" do
-      PaperTrail.config.version_limit = 2
-      PaperTrail.config.version_changes_limit = 3
+    it "cleans up old version objects when version_changes_limit is set globally" do
+      PaperTrail.config.version_limit = nil
+      PaperTrail.config.version_changes_limit = 4
 
-      # LimitedBicycle overrides the global version_changes_limit
+      # LimitedBicycle overrides the global version_limit
+      bike = Bicycle.create(name: "Bike") # has_paper_trail changes_limit: 3
+
+      15.times do |i|
+        bike.update(name: "Name #{i}")
+      end
+      # 16 versions = 15 updates + 1 create.
+
+      expect(Bicycle.find(bike.id).versions.where(object: nil).count).to eq(12)
+      # 13 versions = 12 updates + 1 create
+    end
+
+    it "cleans up old versions when version_changes_limit and version_limit are equal" do
+      PaperTrail.config.version_limit = 3
+
+      # LimitedBicycle overrides the global version_limit
       bike = LimitedChangesBicycle.create(name: "Bike") # has_paper_trail changes_limit: 3
 
       15.times do |i|
         bike.update(name: "Name #{i}")
       end
-      expect(LimitedChangesBicycle.find(bike.id).versions.where(object_changes: nil).count).to eq(4)
       # 16 versions = 15 updates + 1 create.
-      # we are expecting only {changes_limit} of them have object set
+
+      expect(LimitedChangesBicycle.find(bike.id).versions.count).to eq(4)
+      # 4 versions = 3 updates + 1 create.
+    end
+
+    it "cleans up old versions objects when version_changes_limit is lower than version_limit" do
+      PaperTrail.config.version_limit = 6
+      PaperTrail.config.version_changes_limit = 3
+
+      # LimitedBicycle overrides the global version_limit
+      bike = Bicycle.create(name: "Bike")
+
+      15.times do |i|
+        bike.update(name: "Name #{i}")
+      end
+      # 16 versions = 15 updates + 1 create.
+
+      versions = Bicycle.find(bike.id).versions
+      expect(versions.count).to eq(7)
+      # 7 versions = 6 updates + 1 create
+
+      expect(versions.where(object: nil).count).to eq(4)
+      # 4 versions = 3 updates + 1 create.
+    end
+
+    it "cleans up old versions when version_changes_limit is greater than version_limit" do
+      # this basically ignores version_changes_limit
+
+      PaperTrail.config.version_limit = 4
+      PaperTrail.config.version_changes_limit = 6
+
+      # LimitedBicycle overrides the global version_limit
+      bike = Bicycle.create(name: "Bike")
+
+      15.times do |i|
+        bike.update(name: "Name #{i}")
+      end
+      # 16 versions = 15 updates + 1 create.
+
+      versions = Bicycle.find(bike.id).versions
+      expect(versions.count).to eq(5)
+      # 4 versions = 4 updates + 1 create
+      expect(versions.where(object: nil).count).to eq(1)
+      # 1 version = 1 create
     end
   end
 end
