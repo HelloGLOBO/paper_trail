@@ -15,6 +15,7 @@ module PaperTrail
       :serializer,
       :version_limit,
       :version_changes_limit,
+      :enable_version_changes,
       :has_paper_trail_defaults
     )
 

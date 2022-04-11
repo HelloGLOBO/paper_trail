@@ -4,9 +4,34 @@ require "spec_helper"
 
 module PaperTrail
   ::RSpec.describe Cleaner, versioning: true do
+    # after each
     after do
       PaperTrail.config.version_limit = nil
       PaperTrail.config.version_changes_limit = nil
+    end
+
+    # before each
+    before do
+      # enable version changes on all tests
+      PaperTrail.config.enable_version_changes = true
+    end
+
+    it "does not cleans up old versions objects when version_changes_limit is disabled" do
+      PaperTrail.config.enable_version_changes = false
+
+      # LimitedBicycle overrides the global version_limit
+      bike = LimitedChangesBicycle.create(name: "Bike") # has_paper_trail changes_limit: 3
+
+      15.times do |i|
+        bike.update(name: "Name #{i}")
+      end
+      # 16 versions = 15 updates + 1 create.
+
+      expect(LimitedChangesBicycle.find(bike.id).versions.where(object: nil).count).to eq(1)
+      # 1 create
+
+      expect(LimitedChangesBicycle.find(bike.id).versions.where(object_changes: nil).count).to eq(0)
+      # 16 versions
     end
 
     it "cleans up old version objects when version_changes_limit is set on the model" do

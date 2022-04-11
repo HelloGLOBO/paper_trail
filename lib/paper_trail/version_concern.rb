@@ -399,8 +399,10 @@ module PaperTrail
           order(self.class.timestamp_sort_order("asc"))
       end
 
+      do_enforce_version_changes = version_changes_enabled? && has_changes_limit
+
       enforce_version_limit! limit, previous_versions if has_limit
-      enforce_version_changes_limit! changes_limit, previous_versions if has_changes_limit
+      enforce_version_changes_limit! changes_limit, previous_versions if do_enforce_version_changes
     end
 
     # Enforces the `version_limit`, if set. Default: no limit.
@@ -443,6 +445,14 @@ module PaperTrail
     # @api private
     def version_changes_limit
       fetch_config_option :version_changes_limit, :changes_limit
+    end
+
+    # See docs section 2.e. Inficates if version_changes_limit feature is enabled or not
+    # if disabled, version_changes_limit attribute will be ignored
+    #
+    # @api private
+    def version_changes_enabled?
+      fetch_config_option :enable_version_changes, :enable_version_changes
     end
 
     # Will fetch config option on both item type/subtypes paper trail options hash or
