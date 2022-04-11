@@ -109,19 +109,25 @@ module PaperTrail
         @changed_in_latest_version ||= changes_in_latest_version.keys
       end
 
-      # Rails 5.1 changed the API of `ActiveRecord::Dirty`. See
-      # https://github.com/paper-trail-gem/paper_trail/pull/899
+      # Memoized to reduce memory usage
       #
       # @api private
       def changes_in_latest_version
-        # Memoized to reduce memory usage
-        @changes_in_latest_version ||= begin
-          if @in_after_callback
-            @record.saved_changes
-          else
-            @record.changes
-          end
+        @changes_in_latest_version ||= load_changes_in_latest_version
+      end
+
+      # @api private
+      def evaluate_only
+        only = @record.paper_trail_options[:only].dup
+        # Remove Hash arguments and then evaluate whether the attributes (the
+        # keys of the hash) should also get pushed into the collection.
+        only.delete_if do |obj|
+          obj.is_a?(Hash) &&
+            obj.each { |attr, condition|
+              only << attr if condition.respond_to?(:call) && condition.call(@record)
+            }
         end
+        only
       end
 
       # An attributed is "ignored" if it is listed in the `:ignore` option
@@ -132,6 +138,18 @@ module PaperTrail
       def ignored_attr_has_changed?
         ignored = calculated_ignored_array + @record.paper_trail_options[:skip]
         ignored.any? && (changed_in_latest_version & ignored).any?
+      end
+
+      # Rails 5.1 changed the API of `ActiveRecord::Dirty`. See
+      # https://github.com/paper-trail-gem/paper_trail/pull/899
+      #
+      # @api private
+      def load_changes_in_latest_version
+        if @in_after_callback
+          @record.saved_changes
+        else
+          @record.changes
+        end
       end
 
       # PT 10 has a new optional column, `item_subtype`
@@ -178,17 +196,25 @@ module PaperTrail
         if value.respond_to?(:call)
           value.call(@record)
         elsif value.is_a?(Symbol) && @record.respond_to?(value, true)
-          # If it is an attribute that is changing in an existing object,
-          # be sure to grab the current version.
-          if event != "create" &&
-              @record.has_attribute?(value) &&
-              attribute_changed_in_latest_version?(value)
-            attribute_in_previous_version(value, false)
-          else
-            @record.send(value)
-          end
+          metadatum_from_model_method(event, value)
         else
           value
+        end
+      end
+
+      # The model method can either be an attribute or a non-attribute method.
+      #
+      # If it is an attribute that is changing in an existing object,
+      # be sure to grab the correct version.
+      #
+      # @api private
+      def metadatum_from_model_method(event, method)
+        if event != "create" &&
+            @record.has_attribute?(method) &&
+            attribute_changed_in_latest_version?(method)
+          attribute_in_previous_version(method, false)
+        else
+          @record.send(method)
         end
       end
 
@@ -203,16 +229,9 @@ module PaperTrail
       def notably_changed
         # Memoized to reduce memory usage
         @notably_changed ||= begin
-          only = @record.paper_trail_options[:only].dup
-          # Remove Hash arguments and then evaluate whether the attributes (the
-          # keys of the hash) should also get pushed into the collection.
-          only.delete_if do |obj|
-            obj.is_a?(Hash) &&
-              obj.each { |attr, condition|
-                only << attr if condition.respond_to?(:call) && condition.call(@record)
-              }
-          end
-          only.empty? ? changed_and_not_ignored : (changed_and_not_ignored & only)
+          only = evaluate_only
+          cani = changed_and_not_ignored
+          only.empty? ? cani : (cani & only)
         end
       end
 

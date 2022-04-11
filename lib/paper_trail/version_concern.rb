@@ -16,17 +16,13 @@ module PaperTrail
     extend ::ActiveSupport::Concern
 
     included do
-      belongs_to :item, polymorphic: true, optional: true
+      belongs_to :item, polymorphic: true, optional: true, inverse_of: false
       validates_presence_of :event
       after_create :enforce_version_limits!
     end
 
     # :nodoc:
     module ClassMethods
-      def item_subtype_column_present?
-        column_names.include?("item_subtype")
-      end
-
       def with_item_keys(item_type, item_id)
         where item_type: item_type, item_id: item_id
       end
@@ -44,15 +40,15 @@ module PaperTrail
       end
 
       def not_creates
-        where "event <> ?", "create"
+        where.not(event: "create")
       end
 
       def with_object_values
-        where "object <> ?", nil
+        where.not(object: nil)
       end
 
       def with_object_change_values
-        where "object_changes <> ?", nil
+        where.not(object_changes: nil)
       end
 
       def between(start_time, end_time)
@@ -447,8 +443,8 @@ module PaperTrail
       fetch_config_option :version_changes_limit, :changes_limit
     end
 
-    # See docs section 2.e. Inficates if version_changes_limit feature is enabled or not
-    # if disabled, version_changes_limit attribute will be ignored
+    # See docs section 2.e. Indicates if version_changes_limit feature is enabled or not
+    # if disabled, +version_changes_limit+/+changes_limit+ attribute will be ignored
     #
     # @api private
     def version_changes_enabled?
@@ -463,13 +459,18 @@ module PaperTrail
     # @api private
     # TODO: Duplication: similar `constantize` in Reifier#version_reification_class
     def fetch_config_option(option_name, item_config_name = option_name)
-      if self.class.item_subtype_column_present?
-        klass = (item_subtype || item_type).constantize
-        if klass&.paper_trail_options&.key?(item_config_name)
-          return klass.paper_trail_options[item_config_name]
-        end
+      klass = item.class
+      if item_option?(klass, item_config_name)
+        return klass.paper_trail_options[item_config_name]
+      elsif klass.respond_to?(:base_class) && item_option?(klass.base_class, item_config_name)
+        return klass.base_class.paper_trail_options[item_config_name]
       end
+
       PaperTrail.config.send(option_name)
+    end
+
+    def item_option?(klass, option_name)
+      klass.respond_to?(:paper_trail_options) && klass.paper_trail_options.key?(option_name)
     end
   end
 end
