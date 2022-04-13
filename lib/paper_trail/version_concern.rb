@@ -416,6 +416,7 @@ module PaperTrail
     # @api private
     def enforce_version_changes_limit!(changes_limit, previous_versions)
       return unless changes_limit.is_a? Numeric
+      previous_versions = previous_versions.with_object_values
       return unless previous_versions.size > changes_limit
 
       excess_changes_versions = previous_versions - previous_versions.last(changes_limit)
