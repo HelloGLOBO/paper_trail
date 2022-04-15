@@ -618,6 +618,44 @@ has_paper_trail limit: 2
 has_paper_trail limit: nil
 ```
 
+#### 2.e.1 Limiting the amount of full objects stored
+
+Configure `version_objects_limit`* to cap the number of full objects stored in 
+the `object` column per record. `object` column will be nil. 
+This does not apply to `create` events.
+
+*Requires `PaperTrail.config.enable_version_objects_limit` to be enabled `(default: disabled)` 
+
+```ruby
+# Turn feature on
+PaperTrail.config.enable_version_objects_limit = true
+# Limit: 4 full objects per record (3 most recent, 1 create)
+PaperTrail.config.version_objects_limit = 3
+# Remove the limit
+PaperTrail.config.version_objects_limit = nil
+# Turn feature off
+PaperTrail.config.enable_version_objects_limit = false
+```
+
+Models can override the global `PaperTrail.config.version_objects_limit` setting.
+
+Example:
+
+```ruby
+# initializer
+PaperTrail.config.enable_version_objects_limit = true
+PaperTrail.config.version_objects_limit = 10
+
+# Infinite full objects
+has_paper_trail
+
+# At most 3 full objects (2 updates, 1 create). Overrides global version_objects_limit.
+has_paper_trail objects_limit: 2
+
+# Infinite full objects
+has_paper_trail objects_limit: nil
+```
+
 ## 3. Working With Versions
 
 ### 3.a. Reverting And Undeleting A Model

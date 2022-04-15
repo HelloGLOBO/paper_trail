@@ -382,23 +382,23 @@ module PaperTrail
       end
     end
 
-    # Prepares data for reuse when enforcing `version_limit` and `version_changes_limit``
+    # Prepares data for reuse when enforcing `version_limit` and `version_objects_limit``
     # @api private
     def enforce_version_limits!
       limit = version_limit
-      changes_limit = version_changes_limit
+      objects_limit = version_objects_limit
       has_limit = limit.is_a?(Numeric)
-      has_changes_limit = changes_limit.is_a?(Numeric)
+      has_objects_limit = objects_limit.is_a?(Numeric)
 
-      if has_limit || has_changes_limit
+      if has_limit || has_objects_limit
         previous_versions = sibling_versions.not_creates.
           order(self.class.timestamp_sort_order("asc"))
       end
 
-      do_enforce_version_changes = version_changes_enabled? && has_changes_limit
+      do_enforce_version_objects = version_objects_enabled? && has_objects_limit
 
       enforce_version_limit! limit, previous_versions if has_limit
-      enforce_version_changes_limit! changes_limit, previous_versions if do_enforce_version_changes
+      enforce_version_objects_limit! objects_limit, previous_versions if do_enforce_version_objects
     end
 
     # Enforces the `version_limit`, if set. Default: no limit.
@@ -412,15 +412,15 @@ module PaperTrail
       excess_versions.map(&:destroy)
     end
 
-    # Enforces the `version_changes_limit`, if set. Default: no limit.
+    # Enforces the `version_objects_limit`, if set. Default: no limit.
     # @api private
-    def enforce_version_changes_limit!(changes_limit, previous_versions)
-      return unless changes_limit.is_a? Numeric
+    def enforce_version_objects_limit!(objects_limit, previous_versions)
+      return unless objects_limit.is_a? Numeric
       previous_versions = previous_versions.with_object_values
-      return unless previous_versions.size > changes_limit
+      return unless previous_versions.size > objects_limit
 
-      excess_changes_versions = previous_versions - previous_versions.last(changes_limit)
-      excess_changes_versions.map(&:cleanse_object)
+      excess_objects_versions = previous_versions - previous_versions.last(objects_limit)
+      excess_objects_versions.map(&:cleanse_object)
     end
 
     # @api private
@@ -437,19 +437,19 @@ module PaperTrail
     end
 
     # See docs section 2.e. Limiting the Number of +object+ on Versions Created.
-    # The version changes limit can be global or per-model.
+    # The version objects limit can be global or per-model.
     #
     # @api private
-    def version_changes_limit
-      fetch_config_option :version_changes_limit, :changes_limit
+    def version_objects_limit
+      fetch_config_option :version_objects_limit, :objects_limit
     end
 
-    # See docs section 2.e. Indicates if version_changes_limit feature is enabled or not
-    # if disabled, +version_changes_limit+/+changes_limit+ attribute will be ignored
+    # See docs section 2.e. Indicates if version_objects_limit feature is enabled or not
+    # if disabled, +version_objects_limit+/+objects_limit+ attribute will be ignored
     #
     # @api private
-    def version_changes_enabled?
-      fetch_config_option :enable_version_changes, :enable_version_changes
+    def version_objects_enabled?
+      fetch_config_option :enable_version_objects_limit, :enable_version_objects_limit
     end
 
     # Will fetch config option on both item type/subtypes paper trail options hash or

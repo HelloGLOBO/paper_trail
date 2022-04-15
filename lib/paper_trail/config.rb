@@ -14,8 +14,8 @@ module PaperTrail
       :object_changes_adapter,
       :serializer,
       :version_limit,
-      :version_changes_limit,
-      :enable_version_changes,
+      :version_objects_limit,
+      :enable_version_objects_limit,
       :has_paper_trail_defaults
     )
 
