@@ -291,6 +291,8 @@ Global configuration options affect all threads.
 - object_changes_adapter
 - serializer
 - version_limit
+- version_objects_limit
+- enable_version_objects_limit
 
 Syntax example: (options described in detail later)
 
