@@ -15,7 +15,7 @@ This is the _user guide_. See also, the
 
 Choose version:
 [Unreleased](https://github.com/paper-trail-gem/paper_trail/blob/master/README.md),
-[12.0](https://github.com/paper-trail-gem/paper_trail/blob/v12.0.0/README.md),
+[12.3](https://github.com/paper-trail-gem/paper_trail/blob/v12.3.0/README.md),
 [11.1](https://github.com/paper-trail-gem/paper_trail/blob/v11.1.0/README.md),
 [10.3](https://github.com/paper-trail-gem/paper_trail/blob/v10.3.1/README.md),
 [9.2](https://github.com/paper-trail-gem/paper_trail/blob/v9.2.0/README.md),
@@ -64,6 +64,7 @@ Choose version:
   - [6.a. Custom Version Classes](#6a-custom-version-classes)
   - [6.b. Custom Serializer](#6b-custom-serializer)
   - [6.c. Custom Object Changes](#6c-custom-object-changes)
+  - [6.d. Excluding the Object Column](#6d-excluding-the-object-column)
 - [7. Testing](#7-testing)
   - [7.a. Minitest](#7a-minitest)
   - [7.b. RSpec](#7b-rspec)
@@ -87,9 +88,9 @@ Choose version:
 ### 1.a. Compatibility
 
 | paper_trail    | branch     | ruby     | activerecord  |
-| -------------- | ---------- | -------- | ------------- |
-| unreleased     | master     | >= 2.5.0 | >= 5.2, < 6.2 |
-| 12             | 12-stable  | >= 2.5.0 | >= 5.2, < 6.2 |
+| -------------- | ---------- |----------|---------------|
+| unreleased     | master     | >= 2.6.0 | >= 5.2, < 7.1 |
+| 12             | 12-stable  | >= 2.6.0 | >= 5.2, < 7.1 |
 | 11             | 11-stable  | >= 2.4.0 | >= 5.2, < 6.1 |
 | 10             | 10-stable  | >= 2.3.0 | >= 4.2, < 6.1 |
 | 9              | 9-stable   | >= 2.3.0 | >= 4.2, < 5.3 |
@@ -107,7 +108,7 @@ Experts: to install incompatible versions of activerecord, see
 
 ### 1.b. Installation
 
-1. Add PaperTrail to your `Gemfile`.
+1. Add PaperTrail to your `Gemfile` and run [`bundle`][57].
 
     `gem 'paper_trail'`
 
@@ -115,6 +116,11 @@ Experts: to install incompatible versions of activerecord, see
 
     ```
     bundle exec rails generate paper_trail:install [--with-changes]
+    ```
+    
+    If tables in your project use `uuid` instead of `integers` for `id`, then use:  
+    ```
+    bundle exec rails generate paper_trail:install [--uuid]
     ```
 
     See [section 5.c. Generators](#5c-generators) for details.
@@ -285,6 +291,8 @@ Global configuration options affect all threads.
 - object_changes_adapter
 - serializer
 - version_limit
+- version_objects_limit
+- enable_version_objects_limit
 
 Syntax example: (options described in detail later)
 
@@ -612,9 +620,43 @@ has_paper_trail limit: 2
 has_paper_trail limit: nil
 ```
 
-To use a per-model limit, your `versions` table must have an
-`item_subtype` column. See [Section
-4.b.1](https://github.com/paper-trail-gem/paper_trail#4b1-the-optional-item_subtype-column).
+#### 2.e.1 Limiting the amount of full objects stored
+
+Configure `version_objects_limit`* to cap the number of full objects stored in 
+the `object` column per record. `object` column will be nil. 
+This does not apply to `create` events.
+
+*Requires `PaperTrail.config.enable_version_objects_limit` to be enabled `(default: disabled)` 
+
+```ruby
+# Turn feature on
+PaperTrail.config.enable_version_objects_limit = true
+# Limit: 4 full objects per record (3 most recent, 1 create)
+PaperTrail.config.version_objects_limit = 3
+# Remove the limit
+PaperTrail.config.version_objects_limit = nil
+# Turn feature off
+PaperTrail.config.enable_version_objects_limit = false
+```
+
+Models can override the global `PaperTrail.config.version_objects_limit` setting.
+
+Example:
+
+```ruby
+# initializer
+PaperTrail.config.enable_version_objects_limit = true
+PaperTrail.config.version_objects_limit = 10
+
+# Infinite full objects
+has_paper_trail
+
+# At most 3 full objects (2 updates, 1 create). Overrides global version_objects_limit.
+has_paper_trail objects_limit: 2
+
+# Infinite full objects
+has_paper_trail objects_limit: nil
+```
 
 ## 3. Working With Versions
 
@@ -760,12 +802,7 @@ For diffing two strings:
   or arbitrary-boundary-string-wise diffs.  Works very well on non-HTML input.
 * [diff-lcs][21]: old-school, line-wise diffs.
 
-For diffing two ActiveRecord objects:
-
-* [Jeremy Weiskotten's PaperTrail fork][22]: uses ActiveSupport's diff to return
-  an array of hashes of the changes.
-* [activerecord-diff][23]: rather like ActiveRecord::Dirty but also allows you
-  to specify which columns to compare.
+Unfortunately, there is no currently widely available and supported library for diffing two ActiveRecord objects.
 
 ### 3.d. Deleting Old Versions
 
@@ -1143,6 +1180,7 @@ Usage:
 
 Options:
   [--with-changes], [--no-with-changes]            # Store changeset (diff) with each version
+  [--uuid]                                         # To use paper_trail with projects using uuid for id
 
 Runtime options:
   -f, [--force]                    # Overwrite files that already exist
@@ -1216,17 +1254,20 @@ class PostVersion < PaperTrail::Version
 end
 ```
 
-If you only use custom version classes and don't have a `versions` table, you
-must let ActiveRecord know that the `PaperTrail::Version` class is an
-`abstract_class`.
+If you only use custom version classes and don't have a `versions` table, you must
+let ActiveRecord know that your base version class (eg. `ApplicationVersion` below)
+class is an `abstract_class`.
 
 ```ruby
-# app/models/paper_trail/version.rb
-module PaperTrail
-  class Version < ActiveRecord::Base
-    include PaperTrail::VersionConcern
-    self.abstract_class = true
-  end
+# app/models/application_version.rb
+class ApplicationVersion < ActiveRecord::Base
+  include PaperTrail::VersionConcern
+  self.abstract_class = true
+end
+
+class PostVersion < ApplicationVersion
+  self.table_name = :post_versions
+  self.sequence_name = :post_versions_id_seq
 end
 ```
 
@@ -1652,8 +1693,24 @@ require 'paper_trail/frameworks/rspec'
 ```
 
 ## 8. PaperTrail Plugins
+
+- paper_trail-active_record
 - [paper_trail-association_tracking][6] - track and reify associations
+- paper_trail-audit
+- paper_trail-background
 - [paper_trail-globalid][49] - enhances whodunnit by adding an `actor`
+- paper_trail-hashdiff
+- paper_trail-rails
+- paper_trail-related_changes
+- paper_trail-sinatra
+- paper_trail_actor
+- paper_trail_changes
+- paper_trail_manager
+- paper_trail_scrapbook
+- paper_trail_ui
+- revertible_paper_trail
+- rspec-paper_trail
+- sequel_paper_trail
 
 ## 9. Integration with Other Libraries
 
@@ -1728,8 +1785,6 @@ Released under the MIT licence.
 [19]: http://github.com/myobie/htmldiff
 [20]: http://github.com/pvande/differ
 [21]: https://github.com/halostatue/diff-lcs
-[22]: http://github.com/jeremyw/paper_trail/blob/master/lib/paper_trail/has_paper_trail.rb#L151-156
-[23]: http://github.com/tim/activerecord-diff
 [24]: https://github.com/paper-trail-gem/paper_trail/blob/master/lib/paper_trail/serializers/yaml.rb
 [25]: https://github.com/paper-trail-gem/paper_trail/blob/master/lib/paper_trail/serializers/json.rb
 [26]: http://www.postgresql.org/docs/9.4/static/datatype-json.html
@@ -1763,3 +1818,4 @@ Released under the MIT licence.
 [54]: https://rubygems.org/gems/paper_trail
 [55]: https://api.dependabot.com/badges/compatibility_score?dependency-name=paper_trail&package-manager=bundler&version-scheme=semver
 [56]: https://dependabot.com/compatibility-score.html?dependency-name=paper_trail&package-manager=bundler&version-scheme=semver
+[57]: https://bundler.io/v2.3/man/bundle-install.1.html

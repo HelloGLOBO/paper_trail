@@ -35,15 +35,34 @@ module PaperTrail
         if record_object?
           data[:object] = recordable_object(@is_touch)
         end
-        if record_object_changes?
-          changes = @force_changes.nil? ? notable_changes : @force_changes
-          data[:object_changes] = prepare_object_changes(changes)
-        end
+        merge_object_changes_into(data)
         merge_item_subtype_into(data)
         merge_metadata_into(data)
       end
 
+      # If it is a touch event, and changed are empty, it is assumed to be
+      # implicit `touch` mutation, and will a version is created.
+      #
+      # See https://github.com/rails/rails/commit/dcb825902d79d0f6baba956f7c6ec5767611353e
+      #
+      # @api private
+      def changed_notably?
+        if @is_touch && changes_in_latest_version.empty?
+          true
+        else
+          super
+        end
+      end
+
       private
+
+      # @api private
+      def merge_object_changes_into(data)
+        if record_object_changes?
+          changes = @force_changes.nil? ? notable_changes : @force_changes
+          data[:object_changes] = prepare_object_changes(changes)
+        end
+      end
 
       # `touch` cannot record `object_changes` because rails' `touch` does not
       # perform dirty-tracking. Specifically, methods from `Dirty`, like

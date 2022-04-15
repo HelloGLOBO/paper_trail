@@ -5,7 +5,7 @@ require "rails/generators"
 
 RSpec.describe Pet, type: :model, versioning: true do
   it "baseline test setup" do
-    expect(Pet.new).to be_versioned
+    expect(described_class.new).to be_versioned
   end
 
   it "can be reified" do
@@ -13,8 +13,8 @@ RSpec.describe Pet, type: :model, versioning: true do
     dog = Dog.create(name: "Snoopy")
     cat = Cat.create(name: "Garfield")
 
-    person.pets << Pet.create(animal: dog)
-    person.pets << Pet.create(animal: cat)
+    person.pets << described_class.create(animal: dog)
+    person.pets << described_class.create(animal: cat)
     person.update(name: "Steve")
 
     dog.update(name: "Beethoven")
@@ -24,7 +24,7 @@ RSpec.describe Pet, type: :model, versioning: true do
     expect(person.reload.versions.length).to(eq(3))
   end
 
-  context "Older version entry present where item_type refers to the base_class" do
+  context "when an older version entry's item_type refers to the base_class" do
     let(:cat) { Cat.create(name: "Garfield") }   # Index 0
     let(:animal) { Animal.create }               # Index 4
 
@@ -83,7 +83,7 @@ RSpec.describe Pet, type: :model, versioning: true do
 
     # After creating a bunch of records above, we change the inheritance_column
     # so that we can demonstrate passing hints to the migration generator.
-    context "simulate a historical change to inheritance_column" do
+    context "when there was a historical change to inheritance_column" do
       before do
         Animal.inheritance_column = "species_xyz"
       end

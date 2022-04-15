@@ -16,18 +16,13 @@ module PaperTrail
     extend ::ActiveSupport::Concern
 
     included do
-      belongs_to :item, polymorphic: true, optional: true
+      belongs_to :item, polymorphic: true, optional: true, inverse_of: false
       validates_presence_of :event
-      after_create :enforce_version_limit!
+      after_create :enforce_version_limits!
     end
 
     # :nodoc:
     module ClassMethods
-
-      def item_subtype_column_present?
-        column_names.include?("item_subtype")
-      end
-
       def with_item_keys(item_type, item_id)
         where item_type: item_type, item_id: item_id
       end
@@ -45,15 +40,15 @@ module PaperTrail
       end
 
       def not_creates
-        where "event <> ?", "create"
+        where.not(event: "create")
       end
 
       def with_object_values
-        where "object <> ?", nil
+        where.not(object: nil)
       end
 
       def with_object_change_values
-        where "object_changes <> ?", nil
+        where.not(object_changes: nil)
       end
 
       def between(start_time, end_time)
@@ -320,33 +315,22 @@ module PaperTrail
 
     # @api public
     def full?
-      (self.object ? true : false)
+      (object ? true : false)
     end
 
     # @api public
     def incremental?
-      (self.object_changes ? true : false)
-    end
-
-    # DEBUG #
-    def print_config
-      puts "Version Limit: #{version_limit} -  Changes Limit: #{version_changes_limit}"
-      puts "NIL? Version Limit: #{version_limit.nil?} -  Changes Limit: #{version_changes_limit.nil?}"
+      (object_changes ? true : false)
     end
 
     # @api public
     def cleanse_object
-      update_attributes(object: nil)
+      update(object: nil) unless destroyed?
     end
 
     # @api public
     def cleanse_object_changes
-      update_attributes(object_changes: nil)
-    end
-
-    # DEBUG #
-    def print_info
-      puts "#{id}  -----   #{incremental?}  -----   #{full?}"
+      update(object_changes: nil) unless destroyed?
     end
 
     private
@@ -398,49 +382,45 @@ module PaperTrail
       end
     end
 
-    # Enforces the `version_limit`, if set. Default: no limit.
+    # Prepares data for reuse when enforcing `version_limit` and `version_objects_limit``
     # @api private
-    def enforce_version_limit!
+    def enforce_version_limits!
       limit = version_limit
-      changes_limit = version_changes_limit
+      objects_limit = version_objects_limit
+      has_limit = limit.is_a?(Numeric)
+      has_objects_limit = objects_limit.is_a?(Numeric)
 
-      return unless limit.is_a?(Numeric) || changes_limit.is_a?(Numeric)
-
-      previous_versions = sibling_versions.not_creates.
-        order(self.class.timestamp_sort_order("asc"))
-
-      # DEBUG #
-      # previous_versions_with_objects = sibling_versions.not_creates.with_object_values.
-      #   order(self.class.timestamp_sort_order("asc"))
-      #
-      # previous_versions_with_changes = sibling_versions.not_creates.with_object_change_values.
-      #   order(self.class.timestamp_sort_order("asc"))
-      #
-      # puts "previous_versions.count = #{previous_versions.count}"
-      # puts "previous_versions_with_objects.count = #{previous_versions_with_objects.count}"
-      # puts "previous_versions_with_changes.count = #{previous_versions_with_changes.count}"
-      # DEBUG #
-
-      return unless previous_versions.size > (limit || 0) && previous_versions.size > (changes_limit || 0)
-
-      excess_versions = previous_versions - (limit.nil? ? previous_versions : previous_versions.last(limit))
-      excess_changes_versions = (changes_limit.nil? ? previous_versions : previous_versions - previous_versions.last(changes_limit))
-
-      # DEBUG #
-      # puts "excess_versions.count = #{excess_versions.count} - excess_versions.ids = #{excess_versions.map(&:id)}"
-      # puts "excess_changes_versions.count = #{excess_changes_versions.count} - excess_changes_versions.ids = #{excess_changes_versions.map(&:id)}"
-      # DEBUG #
-
-      if excess_versions.size > excess_changes_versions.size
-        excess_versions.each(&:cleanse_object_changes)
-        (excess_versions & excess_changes_versions).map(&:destroy)
-      elsif excess_versions.size < excess_changes_versions.size
-        excess_changes_versions.each(&:cleanse_object)
-        (excess_changes_versions & excess_versions).map(&:destroy)
-      elsif excess_versions.size == excess_changes_versions.size
-        excess_versions.map(&:destroy)
+      if has_limit || has_objects_limit
+        previous_versions = sibling_versions.not_creates.
+          order(self.class.timestamp_sort_order("asc"))
       end
 
+      do_enforce_version_objects = version_objects_enabled? && has_objects_limit
+
+      enforce_version_limit! limit, previous_versions if has_limit
+      enforce_version_objects_limit! objects_limit, previous_versions if do_enforce_version_objects
+    end
+
+    # Enforces the `version_limit`, if set. Default: no limit.
+    # @api private
+    def enforce_version_limit!(limit = version_limit, previous_versions = sibling_versions.
+      not_creates.order(self.class.timestamp_sort_order("asc")))
+      return unless limit.is_a? Numeric
+      return unless previous_versions.size > limit
+
+      excess_versions = previous_versions - previous_versions.last(limit)
+      excess_versions.map(&:destroy)
+    end
+
+    # Enforces the `version_objects_limit`, if set. Default: no limit.
+    # @api private
+    def enforce_version_objects_limit!(objects_limit, previous_versions)
+      return unless objects_limit.is_a? Numeric
+      previous_versions = previous_versions.with_object_values
+      return unless previous_versions.size > objects_limit
+
+      excess_objects_versions = previous_versions - previous_versions.last(objects_limit)
+      excess_objects_versions.map(&:cleanse_object)
     end
 
     # @api private
@@ -452,26 +432,46 @@ module PaperTrail
     # The version limit can be global or per-model.
     #
     # @api private
-    #
-    # TODO: Duplication: similar `constantize` in Reifier#version_reification_class
     def version_limit
-      if self.class.item_subtype_column_present?
-        klass = (item_subtype || item_type).constantize
-        if klass&.paper_trail_options&.key?(:limit)
-          return klass.paper_trail_options[:limit]
-        end
-      end
-      PaperTrail.config.version_limit
+      fetch_config_option :version_limit, :limit
     end
 
-    def version_changes_limit
-      if self.class.item_subtype_column_present?
-        klass = (item_subtype || item_type).constantize
-        if klass&.paper_trail_options&.key?(:changes_limit)
-          return klass.paper_trail_options[:changes_limit]
-        end
+    # See docs section 2.e. Limiting the Number of +object+ on Versions Created.
+    # The version objects limit can be global or per-model.
+    #
+    # @api private
+    def version_objects_limit
+      fetch_config_option :version_objects_limit, :objects_limit
+    end
+
+    # See docs section 2.e. Indicates if version_objects_limit feature is enabled or not
+    # if disabled, +version_objects_limit+/+objects_limit+ attribute will be ignored
+    #
+    # @api private
+    def version_objects_enabled?
+      fetch_config_option :enable_version_objects_limit, :enable_version_objects_limit
+    end
+
+    # Will fetch config option on both item type/subtypes paper trail options hash or
+    # at PaperTrail top-level option.
+    # +option_name+: Top-Level Config Option Name
+    # +item_config_name+(optional): Item Type/Suptype config option name (Defaults to option_name)
+    #
+    # @api private
+    # TODO: Duplication: similar `constantize` in Reifier#version_reification_class
+    def fetch_config_option(option_name, item_config_name = option_name)
+      klass = item.class
+      if item_option?(klass, item_config_name)
+        return klass.paper_trail_options[item_config_name]
+      elsif klass.respond_to?(:base_class) && item_option?(klass.base_class, item_config_name)
+        return klass.base_class.paper_trail_options[item_config_name]
       end
-      PaperTrail.config.version_changes_limit
+
+      PaperTrail.config.send(option_name)
+    end
+
+    def item_option?(klass, option_name)
+      klass.respond_to?(:paper_trail_options) && klass.paper_trail_options.key?(option_name)
     end
   end
 end
