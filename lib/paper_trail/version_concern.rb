@@ -445,13 +445,15 @@ module PaperTrail
     end
 
     def version_changes_limit
-      if self.class.item_subtype_column_present?
-        klass = (item_subtype || item_type).constantize
-        if klass&.paper_trail_options&.key?(:changes_limit)
-          return klass.paper_trail_options[:changes_limit]
-        end
+      klass = item.class
+      if limit_option?(klass)
+        klass.paper_trail_options[:changes_limit]
+      elsif base_class_limit_option?(klass)
+        klass.base_class.paper_trail_options[:changes_limit]
+      else
+        PaperTrail.config.version_changes_limit
       end
-      PaperTrail.config.version_changes_limit
     end
+
   end
 end
