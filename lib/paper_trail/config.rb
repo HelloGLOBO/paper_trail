@@ -15,7 +15,8 @@ module PaperTrail
       :serializer,
       :version_limit,
       :version_changes_limit,
-      :has_paper_trail_defaults
+      :has_paper_trail_defaults,
+      :version_changes_enabled
     )
 
     def initialize
