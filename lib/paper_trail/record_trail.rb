@@ -194,15 +194,17 @@ module PaperTrail
     # Save, and create a version record regardless of options such as `:on`,
     # `:if`, or `:unless`.
     #
-    # Arguments are passed to `save`.
+    # `in_after_callback`: Indicates if this method is being called within an
+    #                      `after` callback. Defaults to `false`.
+    # `options`: Optional arguments passed to `save`.
     #
     # This is an "update" event. That is, we record the same data we would in
     # the case of a normal AR `update`.
-    def save_with_version(**options)
+    def save_with_version(in_after_callback: false, **options)
       ::PaperTrail.request(enabled: false) do
         @record.save(**options)
       end
-      record_update(force: true, in_after_callback: false, is_touch: false)
+      record_update(force: true, in_after_callback: in_after_callback, is_touch: false)
     end
 
     # Like the `update_column` method from `ActiveRecord::Persistence`, but also
@@ -283,7 +285,7 @@ module PaperTrail
     def log_version_errors(version, action)
       version.logger&.warn(
         "Unable to create version for #{action} of #{@record.class.name}" \
-          "##{@record.id}: " + version.errors.full_messages.join(", ")
+        "##{@record.id}: " + version.errors.full_messages.join(", ")
       )
     end
 

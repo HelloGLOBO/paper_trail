@@ -11,6 +11,69 @@ recommendations of [keepachangelog.com](http://keepachangelog.com/).
 
 ### Added
 
+- None
+
+### Fixed
+
+- None
+
+## 12.3.0 (2022-03-13)
+
+### Breaking Changes
+
+- None
+
+### Added
+
+- [#1371](https://github.com/paper-trail-gem/paper_trail/pull/1371) - Added
+  `in_after_callback` argument to `PaperTrail::RecordTrail#save_with_version`,
+  to allow the caller to indicate if this method is being called during an
+  `after` callback. Defaults to `false`.
+- [#1374](https://github.com/paper-trail-gem/paper_trail/pull/1374) - Added
+  option `--uuid` when generating new migration. This can be used to set the
+  type of item_id column to uuid for use with paper_trail on a database that
+  uses uuid as primary key.
+
+### Fixed
+
+- [#1373](https://github.com/paper-trail-gem/paper_trail/issues/1373) - Add
+  CLI option to use uuid type for item_id when generating migration.
+- [#1376](https://github.com/paper-trail-gem/paper_trail/pull/1376) - Create a
+  version record when associated object is touched. Restores the behavior of
+  PaperTrail < v12.1.0.
+
+## 12.2.0 (2022-01-21)
+
+### Breaking Changes
+
+- None
+
+### Added
+
+- [#1365](https://github.com/paper-trail-gem/paper_trail/pull/1365) -
+  Support Rails 7.0
+- [#1349](https://github.com/paper-trail-gem/paper_trail/pull/1349) -
+  `if:` and `unless:` work with `touch` events now.
+
+### Fixed
+
+- [#1366](https://github.com/paper-trail-gem/paper_trail/pull/1366) -
+  Fixed a bug where the `create_versions` migration lead to a broken `db/schema.rb` for Ruby 3
+
+### Dependencies
+
+- [#1338](https://github.com/paper-trail-gem/paper_trail/pull/1338) -
+  Support Psych version 4
+- ruby >= 2.6 (was >= 2.5). Ruby 2.5 reached EoL on 2021-03-31.
+
+## 12.1.0 (2021-08-30)
+
+### Breaking Changes
+
+- None
+
+### Added
+
 - [#1292](https://github.com/paper-trail-gem/paper_trail/pull/1292) -
   `where_attribute_changes` queries for versions where the object's attribute
   changed to or from any values.
@@ -23,6 +86,11 @@ recommendations of [keepachangelog.com](http://keepachangelog.com/).
 - [#1285](https://github.com/paper-trail-gem/paper_trail/pull/1285) -
   For ActiveRecord >= 6.0, the `touch` callback will no longer create a new
   `Version` for skipped or ignored attributes.
+- [#1309](https://github.com/paper-trail-gem/paper_trail/pull/1309) -
+  Removes `item_subtype` requirement when specifying model-specific limits.
+- [#1333](https://github.com/paper-trail-gem/paper_trail/pull/1333) -
+  Improve reification of STI models that use `find_sti_class`/`sti_class_for`
+  to customize single table inheritance.
 
 ## 12.0.0 (2021-03-29)
 
@@ -48,6 +116,8 @@ recommendations of [keepachangelog.com](http://keepachangelog.com/).
 
 ### Fixed
 
+- [#1281](https://github.com/paper-trail-gem/paper_trail/pull/1281) Rails:
+  Instead of an `Engine`, PT now provides a `Railtie`, which is simpler.
 - Expand kwargs passed to `save_with_version` using double splat operator - Rails 6.1 compatibility
 - [#1287](https://github.com/paper-trail-gem/paper_trail/issues/1287) - Fix 'rails db:migrate' error when run against an app with mysql2 adapter
 

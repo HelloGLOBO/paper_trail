@@ -16,17 +16,13 @@ module PaperTrail
     extend ::ActiveSupport::Concern
 
     included do
-      belongs_to :item, polymorphic: true, optional: true
+      belongs_to :item, polymorphic: true, optional: true, inverse_of: false
       validates_presence_of :event
       after_create :enforce_version_limit!
     end
 
     # :nodoc:
     module ClassMethods
-      def item_subtype_column_present?
-        column_names.include?("item_subtype")
-      end
-
       def with_item_keys(item_type, item_id)
         where item_type: item_type, item_id: item_id
       end
@@ -44,7 +40,7 @@ module PaperTrail
       end
 
       def not_creates
-        where "event <> ?", "create"
+        where.not(event: "create")
       end
 
       def with_object_values
@@ -429,16 +425,23 @@ module PaperTrail
     # The version limit can be global or per-model.
     #
     # @api private
-    #
-    # TODO: Duplication: similar `constantize` in Reifier#version_reification_class
     def version_limit
-      if self.class.item_subtype_column_present?
-        klass = (item_subtype || item_type).constantize
-        if klass&.paper_trail_options&.key?(:limit)
-          return klass.paper_trail_options[:limit]
-        end
+      klass = item.class
+      if limit_option?(klass)
+        klass.paper_trail_options[:limit]
+      elsif base_class_limit_option?(klass)
+        klass.base_class.paper_trail_options[:limit]
+      else
+        PaperTrail.config.version_limit
       end
-      PaperTrail.config.version_limit
+    end
+
+    def limit_option?(klass)
+      klass.respond_to?(:paper_trail_options) && klass.paper_trail_options.key?(:limit)
+    end
+
+    def base_class_limit_option?(klass)
+      klass.respond_to?(:base_class) && limit_option?(klass.base_class)
     end
 
     def version_changes_limit
