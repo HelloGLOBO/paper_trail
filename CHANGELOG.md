@@ -17,6 +17,38 @@ recommendations of [keepachangelog.com](http://keepachangelog.com/).
 
 - None
 
+## 15.2.0 (2024-09-07)
+
+### Breaking Changes
+
+- None
+
+### Added
+
+- [#1485](https://github.com/paper-trail-gem/paper_trail/pull/1485) -
+  Rails 7.2
+- [#1457](https://github.com/paper-trail-gem/paper_trail/pull/1457) -
+  Change `versions` table layout (migration generator template) for performance
+
+### Fixed
+
+- None
+
+## 15.1.0 (2023-10-22)
+
+### Breaking Changes
+
+- None
+
+### Fixed
+
+- None
+
+### Dependencies
+
+- Add support for Rails 7.1
+- Add support for Ruby 3.2
+
 ## 15.0.0 (2023-08-06)
 
 ### Breaking Changes

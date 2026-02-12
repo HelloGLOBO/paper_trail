@@ -19,6 +19,10 @@ has been destroyed.
   s.email = "jared@jaredbeck.com"
   s.license = "MIT"
 
+  s.metadata = {
+    "changelog_uri" => "https://github.com/paper-trail-gem/paper_trail/blob/master/CHANGELOG.md"
+  }
+
   # > Files included in this gem. .. Only add files you can require to this
   # > list, not directories, etc.
   # > https://guides.rubygems.org/specification-reference/#files
@@ -52,7 +56,7 @@ has been destroyed.
   # PT supports request_store versions for 3 years.
   s.add_dependency "request_store", "~> 1.4"
 
-  s.add_development_dependency "appraisal", "~> 2.4.1"
+  s.add_development_dependency "appraisal", "~> 2.5"
   s.add_development_dependency "byebug", "~> 11.1"
   s.add_development_dependency "ffaker", "~> 2.20"
   s.add_development_dependency "generator_spec", "~> 0.9.4"
@@ -64,7 +68,7 @@ has been destroyed.
   s.add_development_dependency "rails", ::PaperTrail::Compatibility::ACTIVERECORD_GTE
 
   s.add_development_dependency "rake", "~> 13.0"
-  s.add_development_dependency "rspec-rails", "~> 5.0.2"
+  s.add_development_dependency "rspec-rails", "~> 6.0.3"
   s.add_development_dependency "rubocop", "~> 1.22.2"
   s.add_development_dependency "rubocop-packaging", "~> 0.5.1"
   s.add_development_dependency "rubocop-performance", "~> 1.11.5"
