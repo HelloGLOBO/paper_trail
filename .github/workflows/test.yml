@@ -1,12 +1,15 @@
 name: gha-workflow-pt-test
 on: [push, pull_request]
+permissions:
+  contents: read
+
 jobs:
 
   # Linting is a separate job, primary because it only needs to be done once,
   # and secondarily because jobs are performed concurrently.
   gha-job-pt-lint:
     name: Lint
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout source
         uses: actions/checkout@v2
@@ -14,7 +17,7 @@ jobs:
         uses: ruby/setup-ruby@v1
         with:
           # See "Lowest supported ruby version" in CONTRIBUTING.md
-          ruby-version: '2.6'
+          ruby-version: '3.0'
       - name: Bundle
         run: |
           gem install bundler
@@ -25,7 +28,7 @@ jobs:
   # The test job is a matrix of ruby/rails versions.
   gha-job-pt-test:
     name: Ruby ${{ matrix.ruby }}, ${{ matrix.gemfile }}.gemfile
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     services:
       gha-service-pt-mysql:
         env:
@@ -56,25 +59,11 @@ jobs:
       # have set this up with each database as a separate job, but then we'd be
       # duplicating the matrix configuration three times.
       matrix:
-        gemfile: [ 'rails_5.2', 'rails_6.0', 'rails_6.1', 'rails_7.0' ]
+        gemfile: [ 'rails_6.1', 'rails_7.0' ]
 
         # To keep matrix size down, only test highest and lowest rubies.
-        # Ruby 3.0 is an exception. For now, let's continue to test against 2.7
-        # in case it still produces any deprecation warnings.
-        #
         # See "Lowest supported ruby version" in CONTRIBUTING.md
-        ruby: [ '2.6', '2.7', '3.0', '3.1' ]
-
-        exclude:
-          # rails 5.2 requires ruby < 3.0
-          # https://github.com/rails/rails/issues/40938
-          - ruby: '3.0'
-            gemfile: 'rails_5.2'
-          - ruby: '3.1'
-            gemfile: 'rails_5.2'
-          # rails 7 requires ruby > 2.7
-          - ruby: '2.6'
-            gemfile: 'rails_7.0'
+        ruby: [ '3.0', '3.1' ]
     steps:
       - name: Checkout source
         uses: actions/checkout@v2

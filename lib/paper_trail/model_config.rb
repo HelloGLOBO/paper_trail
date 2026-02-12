@@ -82,8 +82,9 @@ module PaperTrail
 
     # Adds a callback that records a version after a "touch" event.
     #
-    # Rails < 6.0 has a bug where dirty-tracking does not occur during
-    # a `touch`. (https://github.com/rails/rails/issues/33429) See also:
+    # Rails < 6.0 (no longer supported by PT) had a bug where dirty-tracking
+    # did not occur during a `touch`.
+    # (https://github.com/rails/rails/issues/33429) See also:
     # https://github.com/paper-trail-gem/paper_trail/issues/1121
     # https://github.com/paper-trail-gem/paper_trail/issues/1161
     # https://github.com/paper-trail-gem/paper_trail/pull/1285
@@ -93,7 +94,7 @@ module PaperTrail
       @model_class.after_touch { |r|
         if r.paper_trail.save_version?
           r.paper_trail.record_update(
-            force: RAILS_LT_6_0,
+            force: false,
             in_after_callback: true,
             is_touch: true
           )
@@ -120,9 +121,6 @@ module PaperTrail
     end
 
     private
-
-    RAILS_LT_6_0 = ::ActiveRecord.gem_version < ::Gem::Version.new("6.0.0")
-    private_constant :RAILS_LT_6_0
 
     # @api private
     def append_option_uniquely(option, value)

@@ -23,7 +23,7 @@ AllCops:
   NewCops: enable
 
   # See "Lowest supported ruby version" in CONTRIBUTING.md
-  TargetRubyVersion: 2.6
+  TargetRubyVersion: 3.0
 
 Layout/ArgumentAlignment:
   EnforcedStyle: with_fixed_indentation
@@ -114,6 +114,10 @@ Naming/VariableNumber:
 Performance/CollectionLiteralInLoop:
   Exclude:
     - spec/**/*
+
+# This cop only applies to app dev, not gem dev.
+Rails/RakeEnvironment:
+  Enabled: false
 
 # Good advice for rails applications, but not applicable to libraries like PT.
 Rails/SkipsModelValidations:

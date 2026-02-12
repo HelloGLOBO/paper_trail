@@ -17,6 +17,91 @@ recommendations of [keepachangelog.com](http://keepachangelog.com/).
 
 - None
 
+## 15.0.0 (2023-08-06)
+
+### Breaking Changes
+
+- None
+
+### Added
+
+- [#1416](https://github.com/paper-trail-gem/paper_trail/pull/1416) - Adds a
+  model-configurable option `synchronize_version_creation_timestamp` which, if
+  set to false, opts out of synchronizing timestamps between `Version.created_at`
+  and the record's `updated_at`.
+
+### Fixed
+
+- [#1422](https://github.com/paper-trail-gem/paper_trail/pull/1422) - Fix the
+  issue that unencrypted plaintext values are versioned with ActiveRecord
+  encryption (since Rails 7) when using JSON serialization on PostgreSQL json
+  columns.
+- [#1414](https://github.com/paper-trail-gem/paper_trail/pull/1414) - When
+  generating the migration, the version table will use uuid as primary key type
+  if `--uuid` flag is specified.
+
+### Dependencies
+
+- Drop support for Rails 6.0, which [reached EoL on 2023-06-01][2]
+- Drop support for Ruby 2.7, which [reached EoL on 2023-03-31][3]
+
+## 14.0.0 (2022-11-26)
+
+### Breaking Changes
+
+- [#1399](https://github.com/paper-trail-gem/paper_trail/pull/1399) - Same
+  change re: `YAML.safe_load` as in 13.0.0, but this time for Rails 6.0 and 6.1.
+  - This change only affects users whose `versions` table has `object` or
+    `object_changes` columns of type `text`, and who use the YAML serializer. People
+    who use the JSON serializer, or those with `json(b)` columns, are unaffected.
+  - Please see [doc/pt_13_yaml_safe_load.md](doc/pt_13_yaml_safe_load.md) for details.
+- [#1406](https://github.com/paper-trail-gem/paper_trail/pull/1406) -
+  Certain [Metadata][1] keys are now forbidden, like `id`, and `item_type`.
+  These keys are reserved by PT.
+  - This change is unlikely to affect anyone. It is not expected that anyone
+    uses these metadata keys. Most people probably don't use PT metadata at all.
+
+### Dependencies
+
+- Drop support for Rails 5.2, which reached EoL on 2022-06-01
+- Drop support for Ruby 2.6, which reached EoL on 2022-03-31
+- Drop support for request_store < 1.4
+
+### Added
+
+- None
+
+### Fixed
+
+- [#1395](https://github.com/paper-trail-gem/paper_trail/issues/1395) -
+  Fix incorrect `Version#created_at` value when using
+  `PaperTrail::RecordTrail#update_columns`
+- [#1404](https://github.com/paper-trail-gem/paper_trail/pull/1404) -
+  Delay referencing ActiveRecord until after Railtie is loaded
+- Where possible, methods which are not part of PaperTrail's public API have
+  had their access changed to private. All of these methods had been clearly
+  marked as `@api private` in the documentation, for years. This is not expected
+  to be a breaking change.
+
+## 13.0.0 (2022-08-15)
+
+### Breaking Changes
+
+- For Rails >= 7.0, the default serializer will now use `YAML.safe_load` unless
+  `ActiveRecord.use_yaml_unsafe_load`. This change only affects users whose
+  `versions` table has `object` or `object_changes` columns of type `text`, and
+  who use the YAML serializer. People who use the JSON serializer, or those with
+  `json(b)` columns, are unaffected. Please see
+  [doc/pt_13_yaml_safe_load.md](doc/pt_13_yaml_safe_load.md) for details.
+
+### Added
+
+- None
+
+### Fixed
+
+- None
+
 ## 12.3.0 (2022-03-13)
 
 ### Breaking Changes
@@ -170,8 +255,7 @@ recommendations of [keepachangelog.com](http://keepachangelog.com/).
 
 ### Dependencies
 
-- Drop support for rails <= 5.1 (reached EOL when 6.0 was released,
-  per https://guides.rubyonrails.org/maintenance_policy.html)
+- Drop support for rails <= 5.1, which [reached EOL when 6.0 was released][2]
 - Drop support for ruby 2.3 (reached EOL on 2019-04-01)
 
 ## 10.3.1 (2019-07-31)
@@ -1353,3 +1437,7 @@ in the `PaperTrail::Version` class through a `Rails::Engine` when the gem is use
   - [#160](https://github.com/paper-trail-gem/paper_trail/pull/160) - Fixed failing tests and resolved out of date dependency issues.
   - [#157](https://github.com/paper-trail-gem/paper_trail/pull/157) - Refactored `class_attribute` names on the `ClassMethods` module
     for names that are not obviously pertaining to PaperTrail to prevent method name collision.
+
+[1]: https://github.com/paper-trail-gem/paper_trail#4c-storing-metadata
+[2]: https://guides.rubyonrails.org/maintenance_policy.html
+[3]: https://www.ruby-lang.org/en/downloads/branches/

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Person < ActiveRecord::Base
+class Person < ApplicationRecord
   has_many :authorships, foreign_key: :author_id, dependent: :destroy
   has_many :books, through: :authorships
 
@@ -14,7 +14,7 @@ class Person < ActiveRecord::Base
 
   has_one :thing
 
-  belongs_to :mentor, class_name: "Person", foreign_key: :mentor_id, optional: true
+  belongs_to :mentor, class_name: "Person", optional: true
 
   has_paper_trail
 

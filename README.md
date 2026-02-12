@@ -15,6 +15,9 @@ This is the _user guide_. See also, the
 
 Choose version:
 [Unreleased](https://github.com/paper-trail-gem/paper_trail/blob/master/README.md),
+[15.0](https://github.com/paper-trail-gem/paper_trail/blob/v15.0.0/README.md),
+[14.0](https://github.com/paper-trail-gem/paper_trail/blob/v14.0.0/README.md),
+[13.0](https://github.com/paper-trail-gem/paper_trail/blob/v13.0.0/README.md),
 [12.3](https://github.com/paper-trail-gem/paper_trail/blob/v12.3.0/README.md),
 [11.1](https://github.com/paper-trail-gem/paper_trail/blob/v11.1.0/README.md),
 [10.3](https://github.com/paper-trail-gem/paper_trail/blob/v10.3.1/README.md),
@@ -87,21 +90,24 @@ Choose version:
 
 ### 1.a. Compatibility
 
-| paper_trail    | branch     | ruby     | activerecord  |
-| -------------- | ---------- |----------|---------------|
-| unreleased     | master     | >= 2.6.0 | >= 5.2, < 7.1 |
-| 12             | 12-stable  | >= 2.6.0 | >= 5.2, < 7.1 |
-| 11             | 11-stable  | >= 2.4.0 | >= 5.2, < 6.1 |
-| 10             | 10-stable  | >= 2.3.0 | >= 4.2, < 6.1 |
-| 9              | 9-stable   | >= 2.3.0 | >= 4.2, < 5.3 |
-| 8              | 8-stable   | >= 2.2.0 | >= 4.2, < 5.2 |
-| 7              | 7-stable   | >= 2.1.0 | >= 4.0, < 5.2 |
-| 6              | 6-stable   | >= 1.9.3 | >= 4.0, < 5.2 |
-| 5              | 5-stable   | >= 1.9.3 | >= 3.0, < 5.1 |
-| 4              | 4-stable   | >= 1.8.7 | >= 3.0, < 5.1 |
-| 3              | 3.0-stable | >= 1.8.7 | >= 3.0, < 5   |
-| 2              | 2.7-stable | >= 1.8.7 | >= 3.0, < 4   |
-| 1              | rails2     | >= 1.8.7 | >= 2.3, < 3   |
+| paper_trail | branch     | ruby     | activerecord  |
+|-------------|------------|----------|---------------|
+| unreleased  | master     | >= 3.0.0 | >= 6.1, < 7.1 |
+| 15          | 15-stable  | >= 3.0.0 | >= 6.1, < 7.1 |
+| 14          | 14-stable  | >= 2.7.0 | >= 6.0, < 7.1 |
+| 13          | 13-stable  | >= 2.6.0 | >= 5.2, < 7.1 |
+| 12          | 12-stable  | >= 2.6.0 | >= 5.2, < 7.1 |
+| 11          | 11-stable  | >= 2.4.0 | >= 5.2, < 6.1 |
+| 10          | 10-stable  | >= 2.3.0 | >= 4.2, < 6.1 |
+| 9           | 9-stable   | >= 2.3.0 | >= 4.2, < 5.3 |
+| 8           | 8-stable   | >= 2.2.0 | >= 4.2, < 5.2 |
+| 7           | 7-stable   | >= 2.1.0 | >= 4.0, < 5.2 |
+| 6           | 6-stable   | >= 1.9.3 | >= 4.0, < 5.2 |
+| 5           | 5-stable   | >= 1.9.3 | >= 3.0, < 5.1 |
+| 4           | 4-stable   | >= 1.8.7 | >= 3.0, < 5.1 |
+| 3           | 3.0-stable | >= 1.8.7 | >= 3.0, < 5   |
+| 2           | 2.7-stable | >= 1.8.7 | >= 3.0, < 4   |
+| 1           | rails2     | >= 1.8.7 | >= 2.3, < 3   |
 
 Experts: to install incompatible versions of activerecord, see
 `paper_trail/compatibility.rb`.
@@ -115,19 +121,11 @@ Experts: to install incompatible versions of activerecord, see
 1. Add a `versions` table to your database:
 
     ```
-    bundle exec rails generate paper_trail:install [--with-changes]
-    ```
-    
-    If tables in your project use `uuid` instead of `integers` for `id`, then use:  
-    ```
-    bundle exec rails generate paper_trail:install [--uuid]
+    bundle exec rails generate paper_trail:install [--with-changes] [--uuid]
+    bundle exec rails db:migrate
     ```
 
     See [section 5.c. Generators](#5c-generators) for details.
-
-    ```
-    bundle exec rake db:migrate
-    ```
 
 1. Add `has_paper_trail` to the models you want to track.
 
@@ -162,7 +160,7 @@ Once you have a version, you can find out what happened:
 
 ```ruby
 v = widget.versions.last
-v.event # 'update', 'create', 'destroy'. See also: Custom Event Names
+v.event # 'update', 'create', 'destroy'. See also: "The versions.event Column"
 v.created_at
 v.whodunnit # ID of `current_user`. Requires `set_paper_trail_whodunnit` callback.
 widget = v.reify # The widget as it was before the update (nil for a create event)
@@ -378,8 +376,8 @@ end
 ```
 
 The `paper_trail.on_destroy` method can be further configured to happen
-`:before` or `:after` the destroy event. In PaperTrail 4, the default is
-`:after`. In PaperTrail 5, the default will be `:before`, to support
+`:before` or `:after` the destroy event. Until PaperTrail 4, the default was
+`:after`. Starting with PaperTrail 5, the default is `:before`, to support
 ActiveRecord 5. (see https://github.com/paper-trail-gem/paper_trail/pull/683)
 
 ### 2.b. Choosing When To Save New Versions
@@ -415,7 +413,7 @@ my_model.paper_trail.save_with_version
 
 #### Ignore
 
-You can `ignore` changes to certain attributes:
+If you don't want a version created when only a certain attribute changes, you can `ignore` that attribute:
 
 ```ruby
 class Article < ActiveRecord::Base
@@ -435,6 +433,8 @@ a.update title: 'Greeting', content: 'Hello'
 a.versions.length                         # 2
 a.paper_trail.previous_version.title      # 'My Title'
 ```
+
+Note: ignored fields will be stored in the version records. If you want to keep a field out of the versions table, use [`:skip`](#skip) instead of `:ignore`; skipped fields are also implicitly ignored.
 
 The `:ignore` option can also accept `Hash` arguments that we are considering deprecating.
 
@@ -499,16 +499,30 @@ article being saved if a changed attribute is included in `:only` but not in
 
 #### Skip
 
-You can skip attributes completely with the `:skip` option.  As with `:ignore`,
+If you never want a field's values in the versions table, you can `:skip` the attribute.  As with `:ignore`,
 updates to these attributes will not create a version record.  In addition, if a
 version record is created for some other reason, these attributes will not be
 persisted.
 
 ```ruby
-class Article < ActiveRecord::Base
-  has_paper_trail skip: [:file_upload]
+class Author < ActiveRecord::Base
+  has_paper_trail skip: [:social_security_number]
 end
 ```
+
+Author's social security numbers will never appear in the versions log, and if an author updates only their social security number, it won't create a version record.
+
+#### Comparing `:ignore`, `:only`, and `:skip`
+
+- `:only` is basically the same as `:ignore`, but its inverse.
+- `:ignore` controls whether paper_trail will create a version record or not.
+- `:skip` controls whether paper_trail will save that field with the version record.
+- Skipped fields are also implicitly ignored. paper_trail does this internally.
+- Ignored fields are not implicitly skipped.
+
+So:
+- Ignore a field if you don't want a version record created when it's the only field to change.
+- Skip a field if you don't want it to be saved with any version records.
 
 ### 2.d. Turning PaperTrail Off
 
@@ -1062,13 +1076,19 @@ PaperTrail::Version.where(author_id: author_id)
 inserted into its own columns.
 
 | *PT Column*    | *How bad of an idea?* | *Alternative*                 |
-| -------------- | --------------------- | ----------------------------- |
-| item_type      | terrible idea         |                               |
-| item_id        | terrible idea         |                               |
+|----------------|-----------------------|-------------------------------|
+| created_at     | forbidden*            |                               |
 | event          | meh                   | paper_trail_event             |
-| whodunnit      | meh                   | PaperTrail.request.whodunnit= |
+| id             | forbidden             |                               |
+| item_id        | forbidden             |                               |
+| item_subtype   | forbidden             |                               |
+| item_type      | forbidden             |                               |
 | object         | a little dangerous    |                               |
 | object_changes | a little dangerous    |                               |
+| updated_at     | forbidden             |                               |
+| whodunnit      | meh                   | PaperTrail.request.whodunnit= |
+
+\* forbidden - raises a `PaperTrail::InvalidOption` error as of PT 14
 
 ## 5. ActiveRecord
 

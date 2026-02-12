@@ -43,12 +43,14 @@ has been destroyed.
   # about 3 years, per https://www.ruby-lang.org/en/downloads/branches/
   #
   # See "Lowest supported ruby version" in CONTRIBUTING.md
-  s.required_ruby_version = ">= 2.6.0"
+  s.required_ruby_version = ">= 3.0.0"
 
   # We no longer specify a maximum activerecord version.
   # See discussion in paper_trail/compatibility.rb
   s.add_dependency "activerecord", ::PaperTrail::Compatibility::ACTIVERECORD_GTE
-  s.add_dependency "request_store", "~> 1.1"
+
+  # PT supports request_store versions for 3 years.
+  s.add_dependency "request_store", "~> 1.4"
 
   s.add_development_dependency "appraisal", "~> 2.4.1"
   s.add_development_dependency "byebug", "~> 11.1"

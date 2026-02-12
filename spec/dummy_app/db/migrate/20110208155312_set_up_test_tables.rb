@@ -48,6 +48,11 @@ class SetUpTestTables < ::ActiveRecord::Migration::Current
       t.timestamps null: true, limit: 6
     end
 
+    create_table :gizmos, force: true do |t|
+      t.string :name
+      t.timestamps null: true, limit: 6
+    end
+
     create_table :widgets, force: true do |t|
       t.string    :name
       t.text      :a_text
@@ -285,6 +290,7 @@ class SetUpTestTables < ::ActiveRecord::Migration::Current
       t.string :color
       t.integer :mass
       t.string :name
+      t.text :supplier
     end
 
     create_table :boolits, force: true do |t|
@@ -369,6 +375,7 @@ class SetUpTestTables < ::ActiveRecord::Migration::Current
       t.string :color
       t.integer :mass
       t.string :name
+      t.text :supplier
     end
   end
 
